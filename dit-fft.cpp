@@ -67,6 +67,37 @@ namespace fft
         }
     }
 
+    // 迭代实现
+    inline void dit_iter(Complex inout[], size_t fft_len)
+    {
+        if (fft_len <= 1)
+        {
+            return;
+        }
+        if (fft_len == 2)
+        {
+            transform2(inout[0], inout[1]);
+            return;
+        }
+        // 对每一层进行FFT计算
+        for (size_t rank = 2; rank <= fft_len; rank *= 2)
+        {
+            size_t stride = rank / 2;
+            int fft_log_rank = hint_log2(rank);
+            init_twiddle_factors(fft_log_rank);
+            auto omega_ptr = twiddle_factors[fft_log_rank].data();
+            for (size_t k = 0; k < fft_len; k += rank)
+            {
+                for (size_t i = 0; i < stride; ++i)
+                {
+                    auto x0 = inout[k + i], x1 = inout[k + i + stride] * omega_ptr[i];
+                    inout[k + i] = x0 + x1;
+                    inout[k + i + stride] = x0 - x1;
+                }
+            }
+        }
+    }
+
     inline void dit(Complex inout[], size_t fft_len)
     {
         if (fft_len <= 1)
@@ -87,8 +118,9 @@ namespace fft
         // 合并FFT结果
         for (size_t k = 0; k < stride; ++k)
         {
-            inout[stride + k] *= twiddle_factors[fft_log_len][k];
-            transform2(inout[k], inout[stride + k]);
+            auto x0 = inout[k], x1 = inout[k + stride] * twiddle_factors[fft_log_len][k];
+            inout[k] = x0 + x1;
+            inout[k + stride] = x0 - x1;
         }
     }
 
@@ -193,7 +225,7 @@ inline void check_fft()
 inline void perform_fft()
 {
     using namespace fft;
-    size_t fft_len = 1 << 18;
+    size_t fft_len = 1 << 23;
     std::vector<Complex> a(fft_len);
     for (size_t i = 0; i < fft_len; ++i)
     {
@@ -209,7 +241,7 @@ inline void perform_fft()
 int main()
 {
     using namespace fft;
-    init_all_twiddle_factors(20);
+    init_all_twiddle_factors(23);
     check_fft();
     perform_fft();
 }
