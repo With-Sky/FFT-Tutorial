@@ -98,31 +98,31 @@ namespace fft
         }
     }
 
-inline void dif(Complex inout[], size_t fft_len)
-{
-    if (fft_len <= 1)
+    inline void dif(Complex inout[], size_t fft_len)
     {
-        return;
+        if (fft_len <= 1)
+        {
+            return;
+        }
+        if (fft_len == 2)
+        {
+            transform2(inout[0], inout[1]);
+            return;
+        }
+        const size_t stride = fft_len / 2;
+        // 递归调用，对前半部分和后半部分进行FFT计算
+        int fft_log_len = hint_log2(fft_len);
+        init_twiddle_factors(fft_log_len);
+        // 合并FFT结果
+        for (size_t k = 0; k < stride; ++k)
+        {
+            auto x0 = inout[k], x1 = inout[k + stride];
+            inout[k] = x0 + x1;
+            inout[k + stride] = (x0 - x1) * twiddle_factors[fft_log_len][k];
+        }
+        dif(inout, stride);
+        dif(inout + stride, stride);
     }
-    if (fft_len == 2)
-    {
-        transform2(inout[0], inout[1]);
-        return;
-    }
-    const size_t stride = fft_len / 2;
-    // 递归调用，对前半部分和后半部分进行FFT计算
-    int fft_log_len = hint_log2(fft_len);
-    init_twiddle_factors(fft_log_len);
-    // 合并FFT结果
-    for (size_t k = 0; k < stride; ++k)
-    {
-        auto x0 = inout[k], x1 = inout[k + stride];
-        inout[k] = x0 + x1;
-        inout[k + stride] = (x0 - x1) * twiddle_factors[fft_log_len][k];
-    }
-    dif(inout, stride);
-    dif(inout + stride, stride);
-}
 
     // 二进制逆序
     template <typename It>
